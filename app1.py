@@ -4,7 +4,7 @@ from mido import MidiFile, MidiTrack, Message
 import streamlit as st
 import pygame
 
-#  pygame mixer
+
 pygame.mixer.init()
 
 #  scales
@@ -36,34 +36,33 @@ COMMON_PROGRESSIONS = {
     "ii-V-I": [2, 4, 0],
 }
 
-#  MIDI file
+
 def _midi(notes_sequence, filename="output.mid", tempo=120, instrument=0):
     mid = MidiFile()
     track = MidiTrack()
     mid.tracks.append(track)
 
-    # Change instrument
+    
     track.append(Message('program_change', program=instrument))
     
     microseconds_per_beat = int(60000000 / tempo)
     track.append(mido.MetaMessage('set_tempo', tempo=microseconds_per_beat))
 
     for note in notes_sequence:
-        velocity = random.randint(60, 100)  # Keep higher velocity for more consistent quality
+        velocity = random.randint(60, 100)  
         track.append(Message('note_on', note=note, velocity=velocity, time=0))
 
-        pause_duration = random.choice([240, 480, 720])  # Standard rhythm durations
+        pause_duration = random.choice([240, 480, 720])  
         track.append(Message('note_off', note=note, velocity=velocity, time=pause_duration))
 
     mid.save(filename)
 
-# Function to generate chords based on the chosen progression
 def generate_chords(possible_notes, progression):
     chords = []
     
     for degree in progression:
         root_note = possible_notes[degree]
-        chord = [root_note, root_note + 4, root_note + 7]  # Major chord
+        chord = [root_note, root_note + 4, root_note + 7]  
         chords.append(chord)
     return chords
 
@@ -78,17 +77,16 @@ def fitness(sequence, use_chords, progression):
     # Rhythmic stability
     rhythmic_variance_score = len(set([random.choice([0.25, 0.5, 1.0, 1.5]) for _ in sequence]))
 
-    # Emphasize chord notes if using chords
+    # chord notes if using chords
     if use_chords:
         chord_score = sum(1 for i in range(len(sequence)) if (sequence[i] % 12) in progression)
     else:
         chord_score = 0
 
-    # Calculate total fitness (higher is better)
+    # total 
     total_fitness = unique_notes + rhythmic_variance_score - melodic_contour_score + chord_score
     return total_fitness
 
-# Genetic Algorithm
 def genetic_algorithm(generations, population_size, sequence_length, possible_notes, use_chords, progression, mutation_rate):
     population = []
     for _ in range(population_size):
@@ -133,19 +131,18 @@ def crossover(parent1, parent2):
     child = parent1[:crossover_point] + parent2[crossover_point:]
     return child
 
-# Play MIDI file
+
 def play_midi(filename):
     pygame.mixer.music.load(filename)
     pygame.mixer.music.play()
 
-# Stop MIDI playback
 def stop_midi():
     pygame.mixer.music.stop()
 
 # Streamlit UI
 st.title("🎶 Music Composition with Genetic Algorithm 🎶")
 
-# Instrument selection
+
 instruments = {
     "Acoustic Grand Piano": 0, "Bright Acoustic Piano": 1, "Electric Grand Piano": 2, "Honky-Tonk Piano": 3,
     "Electric Piano 1": 4, "Electric Piano 2": 5, "Harpsichord": 6, "Clavinet": 7, "Celesta": 8, "Glockenspiel": 9,
@@ -176,13 +173,13 @@ instruments = {
 
 selected_instrument = st.selectbox("🎻 Select Instrument", list(instruments.keys()))
 
-# Scale and key selection
+
 selected_scale = st.selectbox("🎹 Select Scale", list(SCALES.keys()))
 selected_key = st.selectbox("🎸 Select Key", list(SCALES[selected_scale].keys()))
 
 available_notes = SCALES[selected_scale][selected_key]
 
-# Genetic algorithm parameters
+
 generations = st.slider("🧬 Generations", min_value=10, max_value=500, value=100)
 population_size = st.slider("👨‍👩‍👧‍👦 Population Size", min_value=10, max_value=50, value=20)
 sequence_length = st.slider("📏 Sequence Length", min_value=8, max_value=64, value=32)
@@ -192,22 +189,20 @@ selected_progression = COMMON_PROGRESSIONS.get(progression_choice) if progressio
 tempo = st.slider("🎵 Tempo (BPM)", min_value=40, max_value=200, value=120)
 mutation_rate = st.slider("🔄 Mutation Rate", min_value=0.01, max_value=1.0, value=0.1)
 
-# Button to compose music
+
 if st.button("📝 Compose Music"):
-    st.balloons()  # Add some visual feedback
+    st.balloons()  
     best_sequence, fitness_over_time = genetic_algorithm(generations, population_size, sequence_length, available_notes, use_chords, selected_progression, mutation_rate)
     
     st.write("✨ Best sequence of notes (MIDI):", best_sequence)
 
-    # Show fitness over time
+    
     st.line_chart(fitness_over_time)
 
-    # Save to MIDI file
     _midi(best_sequence, filename="genetic_music.mid", tempo=tempo, instrument=instruments[selected_instrument])
     
-    # Play the MIDI file
     play_midi("genetic_music.mid")
     
-# Stop button
+
 if st.button("🛑 Stop Music"):
     stop_midi()
