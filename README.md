@@ -14,7 +14,7 @@ This project leverages a genetic algorithm to compose music. The application is 
 
 1. **Clone the Repository**
     ```sh
-    git clone https://github.com/yourusername/music-composition-genetic-algorithm.git
+    git clone https://github.com/nipunpatil/music-composition-genetic-algorithm.git
     cd music-composition-genetic-algorithm
     ```
 
