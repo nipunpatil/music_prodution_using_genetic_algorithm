@@ -1,5 +1,4 @@
 pretty_midi
-midi2audio
 mido
 streamlit
-pygame
+
