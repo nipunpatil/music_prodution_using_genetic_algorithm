@@ -190,7 +190,7 @@ if st.button("📝 Compose Music"):
 
     # Convert MIDI to WAV
     wav_filename = "genetic_music.wav"
-    synth.midiToAudio("genetic_music.mid", wav_filename)
+    synth.midi_to_audio("genetic_music.mid", wav_filename)
 
     # Play WAV using Streamlit audio
     if os.path.exists(wav_filename):
