@@ -2,11 +2,7 @@ import random
 import mido
 from mido import MidiFile, MidiTrack, Message
 import streamlit as st
-import pygame
 import os
-
-# Initialize pygame mixer
-pygame.mixer.init()
 
 # Scales
 SCALES = {
@@ -192,4 +188,3 @@ if st.button("📝 Compose Music"):
     if os.path.exists("genetic_music.mid"):
         with open("genetic_music.mid", "rb") as f:
             st.audio(f.read(), format="audio/midi")
-
