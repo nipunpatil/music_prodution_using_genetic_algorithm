@@ -3,6 +3,10 @@ import mido
 from mido import MidiFile, MidiTrack, Message
 import streamlit as st
 import os
+from midi2audio import FluidSynth  # To convert MIDI to WAV
+
+# Initialize FluidSynth
+synth = FluidSynth()
 
 # Scales
 SCALES = {
@@ -184,7 +188,11 @@ if st.button("📝 Compose Music"):
 
     _midi(best_sequence, filename="genetic_music.mid", tempo=tempo, instrument=instruments[selected_instrument])
 
-    # Play MIDI using Streamlit audio
-    if os.path.exists("genetic_music.mid"):
-        with open("genetic_music.mid", "rb") as f:
-            st.audio(f.read(), format="audio/midi")
+    # Convert MIDI to WAV
+    wav_filename = "genetic_music.wav"
+    synth.midiToAudio("genetic_music.mid", wav_filename)
+
+    # Play WAV using Streamlit audio
+    if os.path.exists(wav_filename):
+        with open(wav_filename, "rb") as f:
+            st.audio(f.read(), format="audio/wav")
