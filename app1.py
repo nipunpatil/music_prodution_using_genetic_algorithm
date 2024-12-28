@@ -3,11 +3,12 @@ import mido
 from mido import MidiFile, MidiTrack, Message
 import streamlit as st
 import pygame
+import os
 
-
+# Initialize pygame mixer
 pygame.mixer.init()
 
-#  scales
+# Scales
 SCALES = {
     "Major": {
         "C": [60, 62, 64, 65, 67, 69, 71, 72],
@@ -36,33 +37,31 @@ COMMON_PROGRESSIONS = {
     "ii-V-I": [2, 4, 0],
 }
 
-
 def _midi(notes_sequence, filename="output.mid", tempo=120, instrument=0):
     mid = MidiFile()
     track = MidiTrack()
     mid.tracks.append(track)
 
-    
     track.append(Message('program_change', program=instrument))
-    
+
     microseconds_per_beat = int(60000000 / tempo)
     track.append(mido.MetaMessage('set_tempo', tempo=microseconds_per_beat))
 
     for note in notes_sequence:
-        velocity = random.randint(60, 100)  
+        velocity = random.randint(60, 100)
         track.append(Message('note_on', note=note, velocity=velocity, time=0))
 
-        pause_duration = random.choice([240, 480, 720])  
+        pause_duration = random.choice([240, 480, 720])
         track.append(Message('note_off', note=note, velocity=velocity, time=pause_duration))
 
     mid.save(filename)
 
 def generate_chords(possible_notes, progression):
     chords = []
-    
+
     for degree in progression:
         root_note = possible_notes[degree]
-        chord = [root_note, root_note + 4, root_note + 7]  
+        chord = [root_note, root_note + 4, root_note + 7]
         chords.append(chord)
     return chords
 
@@ -70,7 +69,7 @@ def generate_chords(possible_notes, progression):
 def fitness(sequence, use_chords, progression):
     # Encourage unique notes
     unique_notes = len(set(sequence))
-    
+
     # Smooth transitions (lower melodic jumps)
     melodic_contour_score = sum(abs(sequence[i] - sequence[i - 1]) for i in range(1, len(sequence)))
 
@@ -83,7 +82,7 @@ def fitness(sequence, use_chords, progression):
     else:
         chord_score = 0
 
-    # total 
+    # total
     total_fitness = unique_notes + rhythmic_variance_score - melodic_contour_score + chord_score
     return total_fitness
 
@@ -132,16 +131,8 @@ def crossover(parent1, parent2):
     return child
 
 
-def play_midi(filename):
-    pygame.mixer.music.load(filename)
-    pygame.mixer.music.play()
-
-def stop_midi():
-    pygame.mixer.music.stop()
-
 # Streamlit UI
 st.title("🎶 Music Composition with Genetic Algorithm 🎶")
-
 
 instruments = {
     "Acoustic Grand Piano": 0, "Bright Acoustic Piano": 1, "Electric Grand Piano": 2, "Honky-Tonk Piano": 3,
@@ -150,35 +141,33 @@ instruments = {
     "Drawbar Organ": 16, "Percussive Organ": 17, "Rock Organ": 18, "Church Organ": 19, "Reed Organ": 20,
     "Accordion": 21, "Harmonica": 22, "Tango Accordion": 23, "Acoustic Guitar (nylon)": 24, "Acoustic Guitar (steel)": 25,
     "Electric Guitar (jazz)": 26, "Electric Guitar (clean)": 27, "Electric Guitar (muted)": 28, "Overdriven Guitar": 29,
-    "Distortion Guitar": 30, "Guitar Harmonics": 31, "Acoustic Bass": 32, "Electric Bass (finger)": 33, 
-    "Electric Bass (pick)": 34, "Fretless Bass": 35, "Slap Bass 1": 36, "Slap Bass 2": 37, "Synth Bass 1": 38, 
-    "Synth Bass 2": 39, "Violin": 40, "Viola": 41, "Cello": 42, "Contrabass": 43, "Tremolo Strings": 44, 
-    "Pizzicato Strings": 45, "Orchestral Harp": 46, "Timpani": 47, "String Ensemble 1": 48, "String Ensemble 2": 49, 
-    "SynthStrings 1": 50, "SynthStrings 2": 51, "Choir Aahs": 52, "Voice Oohs": 53, "Synth Voice": 54, 
-    "Orchestra Hit": 55, "Trumpet": 56, "Trombone": 57, "Tuba": 58, "Muted Trumpet": 59, "French Horn": 60, 
-    "Brass Section": 61, "SynthBrass 1": 62, "SynthBrass 2": 63, "Soprano Sax": 64, "Alto Sax": 65, "Tenor Sax": 66, 
-    "Baritone Sax": 67, "Oboe": 68, "English Horn": 69, "Bassoon": 70, "Clarinet": 71, "Piccolo": 72, 
-    "Flute": 73, "Recorder": 74, "Pan Flute": 75, "Blown Bottle": 76, "Shakuhachi": 77, "Whistle": 78, 
-    "Ocarina": 79, "Lead 1 (square)": 80, "Lead 2 (sawtooth)": 81, "Lead 3 (calliope)": 82, "Lead 4 (chiff)": 83, 
-    "Lead 5 (charang)": 84, "Lead 6 (voice)": 85, "Lead 7 (fifths)": 86, "Lead 8 (bass + lead)": 87, 
-    "Pad 1 (new age)": 88, "Pad 2 (warm)": 89, "Pad 3 (polysynth)": 90, "Pad 4 (choir)": 91, 
-    "Pad 5 (bowed)": 92, "Pad 6 (metallic)": 93, "Pad 7 (halo)": 94, "Pad 8 (sweep)": 95, "FX 1 (rain)": 96, 
-    "FX 2 (soundtrack)": 97, "FX 3 (crystal)": 98, "FX 4 (atmosphere)": 99, "FX 5 (brightness)": 100, 
-    "FX 6 (goblins)": 101, "FX 7 (echoes)": 102, "FX 8 (sci-fi)": 103, "Sitar": 104, "Banjo": 105, 
-    "Shamisen": 106, "Koto": 107, "Kalimba": 108, "Bagpipe": 109, "Fiddle": 110, "Shanai": 111, 
-    "Tinkle Bell": 112, "Agogo": 113, "Steel Drums": 114, "Woodblock": 115, "Taiko Drum": 116, 
-    "Melodic Tom": 117, "Synth Drum": 118, "Reverse Cymbal": 119, "Guitar Fret Noise": 120, 
+    "Distortion Guitar": 30, "Guitar Harmonics": 31, "Acoustic Bass": 32, "Electric Bass (finger)": 33,
+    "Electric Bass (pick)": 34, "Fretless Bass": 35, "Slap Bass 1": 36, "Slap Bass 2": 37, "Synth Bass 1": 38,
+    "Synth Bass 2": 39, "Violin": 40, "Viola": 41, "Cello": 42, "Contrabass": 43, "Tremolo Strings": 44,
+    "Pizzicato Strings": 45, "Orchestral Harp": 46, "Timpani": 47, "String Ensemble 1": 48, "String Ensemble 2": 49,
+    "SynthStrings 1": 50, "SynthStrings 2": 51, "Choir Aahs": 52, "Voice Oohs": 53, "Synth Voice": 54,
+    "Orchestra Hit": 55, "Trumpet": 56, "Trombone": 57, "Tuba": 58, "Muted Trumpet": 59, "French Horn": 60,
+    "Brass Section": 61, "SynthBrass 1": 62, "SynthBrass 2": 63, "Soprano Sax": 64, "Alto Sax": 65, "Tenor Sax": 66,
+    "Baritone Sax": 67, "Oboe": 68, "English Horn": 69, "Bassoon": 70, "Clarinet": 71, "Piccolo": 72,
+    "Flute": 73, "Recorder": 74, "Pan Flute": 75, "Blown Bottle": 76, "Shakuhachi": 77, "Whistle": 78,
+    "Ocarina": 79, "Lead 1 (square)": 80, "Lead 2 (sawtooth)": 81, "Lead 3 (calliope)": 82, "Lead 4 (chiff)": 83,
+    "Lead 5 (charang)": 84, "Lead 6 (voice)": 85, "Lead 7 (fifths)": 86, "Lead 8 (bass + lead)": 87,
+    "Pad 1 (new age)": 88, "Pad 2 (warm)": 89, "Pad 3 (polysynth)": 90, "Pad 4 (choir)": 91,
+    "Pad 5 (bowed)": 92, "Pad 6 (metallic)": 93, "Pad 7 (halo)": 94, "Pad 8 (sweep)": 95, "FX 1 (rain)": 96,
+    "FX 2 (soundtrack)": 97, "FX 3 (crystal)": 98, "FX 4 (atmosphere)": 99, "FX 5 (brightness)": 100,
+    "FX 6 (goblins)": 101, "FX 7 (echoes)": 102, "FX 8 (sci-fi)": 103, "Sitar": 104, "Banjo": 105,
+    "Shamisen": 106, "Koto": 107, "Kalimba": 108, "Bagpipe": 109, "Fiddle": 110, "Shanai": 111,
+    "Tinkle Bell": 112, "Agogo": 113, "Steel Drums": 114, "Woodblock": 115, "Taiko Drum": 116,
+    "Melodic Tom": 117, "Synth Drum": 118, "Reverse Cymbal": 119, "Guitar Fret Noise": 120,
     "Breath Noise": 121, "Seashore": 122, "Bird Tweet": 123, "Telephone Ring": 124
 }
 
 selected_instrument = st.selectbox("🎻 Select Instrument", list(instruments.keys()))
 
-
 selected_scale = st.selectbox("🎹 Select Scale", list(SCALES.keys()))
 selected_key = st.selectbox("🎸 Select Key", list(SCALES[selected_scale].keys()))
 
 available_notes = SCALES[selected_scale][selected_key]
-
 
 generations = st.slider("🧬 Generations", min_value=10, max_value=500, value=100)
 population_size = st.slider("👨‍👩‍👧‍👦 Population Size", min_value=10, max_value=50, value=20)
@@ -189,20 +178,18 @@ selected_progression = COMMON_PROGRESSIONS.get(progression_choice) if progressio
 tempo = st.slider("🎵 Tempo (BPM)", min_value=40, max_value=200, value=120)
 mutation_rate = st.slider("🔄 Mutation Rate", min_value=0.01, max_value=1.0, value=0.1)
 
-
 if st.button("📝 Compose Music"):
-    st.balloons()  
+    st.balloons()
     best_sequence, fitness_over_time = genetic_algorithm(generations, population_size, sequence_length, available_notes, use_chords, selected_progression, mutation_rate)
-    
+
     st.write("✨ Best sequence of notes (MIDI):", best_sequence)
 
-    
     st.line_chart(fitness_over_time)
 
     _midi(best_sequence, filename="genetic_music.mid", tempo=tempo, instrument=instruments[selected_instrument])
-    
-    play_midi("genetic_music.mid")
-    
 
-if st.button("🛑 Stop Music"):
-    stop_midi()
+    # Play MIDI using Streamlit audio
+    if os.path.exists("genetic_music.mid"):
+        with open("genetic_music.mid", "rb") as f:
+            st.audio(f.read(), format="audio/midi")
+
