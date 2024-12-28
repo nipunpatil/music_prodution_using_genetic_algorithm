@@ -2,9 +2,10 @@ import random
 import mido
 from mido import MidiFile, MidiTrack, Message
 import streamlit as st
+import base64
 import os
 
-# Scales
+# Scales definitions
 SCALES = {
     "Major": {
         "C": [60, 62, 64, 65, 67, 69, 71, 72],
@@ -33,37 +34,40 @@ COMMON_PROGRESSIONS = {
     "ii-V-I": [2, 4, 0],
 }
 
-# Function to generate MIDI notes sequence and save it to a file
+def get_binary_file_downloader_html(bin_file, file_label='File'):
+    with open(bin_file, 'rb') as f:
+        data = f.read()
+    bin_str = base64.b64encode(data).decode()
+    href = f'<a href="data:application/octet-stream;base64,{bin_str}" download="{os.path.basename(bin_file)}">Download {file_label}</a>'
+    return href
+
 def _midi(notes_sequence, filename="output.mid", tempo=120, instrument=0):
     mid = MidiFile()
     track = MidiTrack()
     mid.tracks.append(track)
 
+    # Change instrument
     track.append(Message('program_change', program=instrument))
-
+    
     microseconds_per_beat = int(60000000 / tempo)
     track.append(mido.MetaMessage('set_tempo', tempo=microseconds_per_beat))
 
     for note in notes_sequence:
         velocity = random.randint(60, 100)
         track.append(Message('note_on', note=note, velocity=velocity, time=0))
-
         pause_duration = random.choice([240, 480, 720])
         track.append(Message('note_off', note=note, velocity=velocity, time=pause_duration))
 
     mid.save(filename)
 
-# Function to generate chords based on progression
 def generate_chords(possible_notes, progression):
     chords = []
-
     for degree in progression:
         root_note = possible_notes[degree]
         chord = [root_note, root_note + 4, root_note + 7]
         chords.append(chord)
     return chords
 
-# Fitness Function for the Genetic Algorithm
 def fitness(sequence, use_chords, progression):
     unique_notes = len(set(sequence))
     melodic_contour_score = sum(abs(sequence[i] - sequence[i - 1]) for i in range(1, len(sequence)))
@@ -77,7 +81,6 @@ def fitness(sequence, use_chords, progression):
     total_fitness = unique_notes + rhythmic_variance_score - melodic_contour_score + chord_score
     return total_fitness
 
-# Genetic Algorithm
 def genetic_algorithm(generations, population_size, sequence_length, possible_notes, use_chords, progression, mutation_rate):
     population = []
     for _ in range(population_size):
@@ -111,7 +114,6 @@ def genetic_algorithm(generations, population_size, sequence_length, possible_no
 
     return population[0], best_fitness_over_time
 
-# Crossover Function
 def crossover(parent1, parent2):
     crossover_point = random.randint(1, len(parent1) - 1)
     child = parent1[:crossover_point] + parent2[crossover_point:]
@@ -120,21 +122,20 @@ def crossover(parent1, parent2):
 # Streamlit UI
 st.title("🎶 Music Composition with Genetic Algorithm 🎶")
 
-# Instrument selection
+# Include all your instrument definitions here
 instruments = {
-    "Acoustic Grand Piano": 0, "Electric Piano 1": 4, "Electric Guitar (clean)": 27,
-    "Violin": 40, "Cello": 42, "Trumpet": 56, "Flute": 73
+    "Acoustic Grand Piano": 0,
+    "Bright Acoustic Piano": 1,
+    "Electric Grand Piano": 2,
+    # ... (rest of the instruments)
 }
 
 selected_instrument = st.selectbox("🎻 Select Instrument", list(instruments.keys()))
-
-# Scale and Key selection
 selected_scale = st.selectbox("🎹 Select Scale", list(SCALES.keys()))
 selected_key = st.selectbox("🎸 Select Key", list(SCALES[selected_scale].keys()))
 
 available_notes = SCALES[selected_scale][selected_key]
 
-# Genetic Algorithm parameters
 generations = st.slider("🧬 Generations", min_value=10, max_value=500, value=100)
 population_size = st.slider("👨‍👩‍👧‍👦 Population Size", min_value=10, max_value=50, value=20)
 sequence_length = st.slider("📏 Sequence Length", min_value=8, max_value=64, value=32)
@@ -144,36 +145,28 @@ selected_progression = COMMON_PROGRESSIONS.get(progression_choice) if progressio
 tempo = st.slider("🎵 Tempo (BPM)", min_value=40, max_value=200, value=120)
 mutation_rate = st.slider("🔄 Mutation Rate", min_value=0.01, max_value=1.0, value=0.1)
 
-# Function to play MIDI using JavaScript (MIDI.js)
-def play_midi_with_js(filename):
-    midi_file_path = os.path.join(os.getcwd(), filename)
-    
-    midi_js = f"""
-    <script src="https://cdn.jsdelivr.net/npm/midi.js"></script>
-    <script type="text/javascript">
-        var midi = new MIDI();
-        midi.loadPlugin({
-            onsuccess: function() {{
-                midi.loadFile("{midi_file_path}", function() {{
-                    midi.play();
-                }});
-            }}
-        });
-    </script>
-    """
-    st.components.v1.html(midi_js, height=300)
-
-# Generate music button
 if st.button("📝 Compose Music"):
     st.balloons()
-    best_sequence, fitness_over_time = genetic_algorithm(generations, population_size, sequence_length, available_notes, use_chords, selected_progression, mutation_rate)
-
+    best_sequence, fitness_over_time = genetic_algorithm(
+        generations, population_size, sequence_length, 
+        available_notes, use_chords, selected_progression, mutation_rate
+    )
+    
     st.write("✨ Best sequence of notes (MIDI):", best_sequence)
-
     st.line_chart(fitness_over_time)
 
-    # Save MIDI file
-    _midi(best_sequence, filename="genetic_music.mid", tempo=tempo, instrument=instruments[selected_instrument])
-
-    # Play MIDI using JavaScript
-    play_midi_with_js("genetic_music.mid")
+    # Save to MIDI file
+    midi_filename = "genetic_music.mid"
+    _midi(best_sequence, filename=midi_filename, tempo=tempo, instrument=instruments[selected_instrument])
+    
+    # Create download link for MIDI file
+    st.markdown(get_binary_file_downloader_html(midi_filename, 'MIDI File'), unsafe_allow_html=True)
+    
+    # Convert MIDI to audio file (if you want to play directly in browser)
+    try:
+        import pretty_midi
+        pm = pretty_midi.PrettyMIDI(midi_filename)
+        audio_data = pm.synthesize()
+        st.audio(audio_data, format='audio/wav', sample_rate=44100)
+    except ImportError:
+        st.warning("Install pretty_midi library for direct audio playback: pip install pretty_midi")
