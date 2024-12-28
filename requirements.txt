@@ -2,3 +2,4 @@ pretty_midi
 mido
 streamlit
 midi2audio
+pygame
