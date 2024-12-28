@@ -1,3 +1,4 @@
+midi2audio
 mido
 streamlit
 pygame
